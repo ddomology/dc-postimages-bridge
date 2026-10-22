@@ -204,6 +204,8 @@
       </section>`;
     editor.before(host);
     const $memo = jq(memo);
+    const editable = editor.querySelector('.note-editable');
+    const guideSelector = '.wrt_guide_preview_inn, #wrt_guide_preview_inn';
     const uploadButton = root.getElementById('upload');
     const retryButton = root.getElementById('retry');
     const links = root.getElementById('links');
@@ -225,10 +227,56 @@
       status.hidden = false;
     }
     function isCodeView() { return !!$memo.summernote('codeview.isActivated'); }
+    function cleanGuides() {
+      // Code view owns a separate buffer. Never overwrite it from the DOM.
+      if (isCodeView()) return;
+      const guides = editable.querySelectorAll(guideSelector);
+      guides.forEach(guide => guide.remove());
+      // DC's onFocus/onChange calls wrt_guide_del while this flag is true.
+      // That function focuses again even when the guide has already gone.
+      // Clear the known guide flag before any Summernote focus/change call.
+      // It is a global lexical binding on DC, not a window property.
+      if (typeof isWrtGuide === 'boolean') isWrtGuide = false;
+      if (!guides.length) return;
+      if (!editable.hasChildNodes()) editable.innerHTML = '<p><br></p>';
+      memo.value = editable.innerHTML;
+      editable.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    cleanGuides();
+    const guideObserver = new MutationObserver(records => {
+      if (records.some(record => Array.from(record.addedNodes).some(node =>
+        node.nodeType === 1 && (node.matches(guideSelector) || node.querySelector(guideSelector))))) cleanGuides();
+    });
+    guideObserver.observe(editable, { childList: true, subtree: true });
+    $memo.on('summernote.codeview.toggled.dcpi', cleanGuides);
+
+    function usableRange(range) {
+      return range && [range.startContainer, range.endContainer].every(node =>
+        editable.contains(node) && !(node.nodeType === 1 ? node : node.parentElement)?.closest('[contenteditable="false"]'));
+    }
+    function savedRange() {
+      try {
+        const saved = $memo.summernote('editor.getLastRange');
+        const range = document.createRange();
+        range.setStart(saved.sc, saved.so);
+        range.setEnd(saved.ec, saved.eo);
+        return usableRange(range) ? range : null;
+      } catch { return null; }
+    }
+    function selectRange(range) {
+      if (!usableRange(range)) {
+        range = document.createRange();
+        range.selectNodeContents(editable);
+        range.collapse(false);
+      }
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      $memo.summernote('editor.setLastRange');
+    }
     function saveCursor() {
       if (!isCodeView()) {
         const selection = window.getSelection();
-        const editable = editor.querySelector('.note-editable');
         if (selection && editable.contains(selection.anchorNode) && editable.contains(selection.focusNode)) {
           $memo.summernote('editor.setLastRange');
         }
@@ -252,33 +300,42 @@
         report('HTML 모드를 끈 다음 ‘삽입 다시 시도’를 눌러 주세요. 이미지 링크는 아래에 보관되어 있습니다.', 'error');
         return;
       }
-      const editable = editor.querySelector('.note-editable');
-      const beforeCount = editable.querySelectorAll('img').length;
+      let beforeHtml;
       try {
+        // A live native Range follows text-node normalization. Summernote's
+        // stored wrapper keeps detached nodes and can fail on the first paste.
+        const range = savedRange();
+        cleanGuides();
         $memo.summernote('focus');
-        const saved = $memo.summernote('editor.getLastRange');
-        if (!saved || !editable.contains(saved.sc) || !editable.contains(saved.ec)) {
-          // Undo, HTML edits or page callbacks can detach the saved caret.
-          // In that case append without deleting any part of the current draft.
-          const range = document.createRange();
-          range.selectNodeContents(editable);
-          range.collapse(false);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-          $memo.summernote('editor.setLastRange');
-        }
-        $memo.summernote('restoreRange');
+        cleanGuides();
+        selectRange(range);
         // Snapshot recent typing/codeview edits before the insertion so Undo
-        // restores the exact current draft, even before typing's debounce runs.
+        // restores the current draft. afterCommand normalizes nodes and runs
+        // DC callbacks, so refresh the saved range AFTER it, not before it.
         $memo.summernote('editor.afterCommand');
-        $memo.summernote('pasteHTML', imageMarkup(urls));
+        selectRange(range);
+        const markup = imageMarkup(urls);
+        const count = url => Array.from(editable.querySelectorAll('img')).filter(img => img.getAttribute('src') === url).length;
+        const counts = urls.map(count);
+        beforeHtml = editable.innerHTML;
+        try {
+          $memo.summernote('pasteHTML', markup);
+        } catch (error) {
+          // One safe fallback only if no part of the draft changed. Never
+          // repeat a paste that partially inserted or deleted content.
+          if (editable.innerHTML !== beforeHtml || isCodeView()) throw error;
+          cleanGuides();
+          selectRange(null);
+          $memo.summernote('pasteHTML', markup);
+        }
+        if (urls.some((url, index) => count(url) !== counts[index] + 1)) throw new Error('Incomplete insertion');
+        memo.value = editable.innerHTML;
         queued = null;
         retryButton.hidden = true;
         report('이미지 ' + urls.length + '장을 넣었습니다.', 'success');
       } catch {
         // Do not offer a blind retry if the editor changed before an exception.
-        if (editable.querySelectorAll('img').length !== beforeCount) {
+        if (beforeHtml !== undefined && editable.innerHTML !== beforeHtml) {
           queued = null;
           retryButton.hidden = true;
           report('편집 중 오류가 발생했습니다. 일부 이미지가 들어갔을 수 있으니 본문을 확인해 주세요. 직접 링크는 아래에 남겨 두었습니다.', 'error');
@@ -363,6 +420,11 @@
       try { insert(extractImages(links.value)); }
       catch (error) { report(error.message, 'error'); }
     });
-    window.addEventListener('pagehide', () => { stopWatching(); closeChannel(); }, { once: true });
+    window.addEventListener('pagehide', () => {
+      stopWatching();
+      closeChannel();
+      guideObserver.disconnect();
+      $memo.off('.dcpi');
+    }, { once: true });
   }
 })();

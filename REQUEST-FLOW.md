@@ -1,6 +1,6 @@
 # 요청 흐름
 
-v1.0.2 · 분석일 2026-10-22
+v1.0.3 · 분석일 2026-10-22
 
 화면의 **이미지 업로드** 버튼은 Postimages 팝업을 열고, **직접 링크로 넣기(자동 삽입이 안 될 때)**는 링크를 편집기에 삽입합니다. v1.0.2는 결과가 글쓰기 URL로 돌아오는 리다이렉트 경로를 추가 처리합니다.
 
@@ -27,7 +27,11 @@ v1.0.2 · 분석일 2026-10-22
 
 분석한 페이지: https://gall.dcinside.com/mgallery/board/write/?id=thesingularity
 
-편집기는 `#write textarea#memo`를 Summernote로 초기화합니다. 확장은 동일한 편집기 API의 `editor.setLastRange`, `restoreRange`, `pasteHTML`을 사용하므로 원래 글쓰기 폼에 본문을 유지합니다. 로그인 관련 DOM이나 쿠키에는 접근하지 않습니다.
+편집기는 `#write textarea#memo`를 Summernote로 초기화합니다. 확장은 동일한 편집기의 `editor.setLastRange`와 `pasteHTML`을 사용합니다. 로그인 관련 DOM이나 쿠키에는 접근하지 않습니다.
+
+초기 로드와 이미지 삽입 전에 편집기 안의 `.wrt_guide_preview_inn`·`#wrt_guide_preview_inn`만 제거합니다. 같은 요소가 늦게 추가되면 해당 편집기에 한정한 MutationObserver가 정리합니다. 다른 본문·이미지·읽기 전용 요소는 유지하며, HTML 모드의 별도 입력 내용은 덮어쓰지 않습니다. 디시의 `isWrtGuide` 상태도 정리해 안내문 삭제 후 포커스를 반복 호출하지 않게 합니다.
+
+v1.0.2는 `editor.afterCommand`가 텍스트 노드를 병합한 뒤에도 이전 노드를 가리키는 커서 참조를 사용했습니다. v1.0.3은 변경을 따라가는 DOM Range로 위치를 보관하고, 정리·본문 스냅샷 이후 커서를 다시 설정합니다. 위치가 유효하지 않으면 본문 끝에 삽입합니다. 삽입 중 예외가 발생해도 본문이 전혀 바뀌지 않은 경우에만 한 번 자동으로 복구하며, 일부 변경이 있으면 중복 삽입을 막습니다.
 
 페이지의 기존 등록 스크립트는 `/block/block/` 요청 후 `/board/forms/article_submit`에 본문과 폼 값을 보냅니다. CSRF, 동적 폼 값, 자동입력 방지 및 적용된 Turnstile 절차가 연계됩니다. 확장은 이 요청을 복제·가로채거나 토큰을 수정하지 않습니다.
 
