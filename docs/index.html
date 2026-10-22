@@ -14,9 +14,9 @@
     <nav class="top" aria-label="페이지 메뉴"><span>디시 이미지 브릿지</span><a href="https://github.com/ddomology/dc-postimages-bridge">GitHub ↗</a></nav>
     <main id="main">
       <header>
-        <p class="meta">PC Chrome / Edge · v1.0.0</p>
+        <p class="meta">PC Chrome / Edge · v1.0.1</p>
         <h1>다운로드 및 설치</h1>
-        <p class="intro">디시 글쓰기 화면에 Postimages 이미지 업로드 버튼을 추가합니다.</p>
+        <p class="intro">디시 글쓰기 화면에 이미지 업로드 버튼을 추가합니다.</p>
         <div class="download-row"><a class="download" href="dc-postimages-extension.zip" download>확장프로그램 다운로드 <span aria-hidden="true">↓</span></a><span class="meta">ZIP · 압축 해제 후 설치</span></div>
       </header>
       <nav class="contents" aria-label="안내 목차"><a href="#install">설치</a><a href="#use">사용 방법</a><a href="#troubleshooting">문제 해결</a></nav>
@@ -27,7 +27,7 @@
           <li><span class="number" aria-hidden="true">02</span><div><h3>확장프로그램 관리 열기</h3><p>브라우저 주소창에 아래 주소를 입력하세요.</p><div class="addresses"><div><span>Chrome</span><code>chrome://extensions</code></div><div><span>Edge</span><code>edge://extensions</code></div></div></div></li>
           <li><span class="number" aria-hidden="true">03</span><div><h3>폴더 불러오기</h3><p><strong>개발자 모드</strong>를 켜고 <strong>압축해제된 확장 프로그램을 로드합니다</strong>를 누르세요.<br><code>manifest.json</code>이 들어 있는 폴더를 선택한 뒤 디시 글쓰기 페이지를 새로고침하세요.</p></div></li>
         </ol>
-        <p class="note">설치한 폴더는 삭제하지 마세요. Tampermonkey는 필요하지 않습니다.</p>
+        <p class="note">설치한 폴더는 삭제하지 마세요.</p>
       </section>
       <section id="use" aria-labelledby="use-title">
         <div class="section-heading"><h2 id="use-title">사용 방법</h2><a href="https://gall.dcinside.com/mgallery/board/write/?id=thesingularity" target="_blank" rel="noopener noreferrer">특이점 갤러리 글쓰기 ↗</a></div>
@@ -37,9 +37,9 @@
           <figure><a class="image-link" href="images/dc-editor.jpg" target="_blank" rel="noopener" aria-label="디시 글쓰기 화면 크게 보기"><img src="images/dc-editor.jpg" width="1021" height="205" alt="디시 PC 글쓰기 편집기. 오른쪽 위 HTML 체크박스가 꺼져 있다." loading="lazy"></a><figcaption><span>디시 PC 글쓰기 실제 화면 · 확장 설치 전</span><span>이미지를 누르면 확대</span></figcaption></figure>
         </article>
         <article class="step">
-          <h3><span class="number" aria-hidden="true">02</span> Postimages 이미지 업로드 누르기</h3>
-          <p>설치 후 본문 위에 표시되는 도우미에서 <strong>Postimages 이미지 업로드</strong>를 누르세요.</p>
-          <figure><a class="image-link" href="images/helper-panel.jpg" target="_blank" rel="noopener" aria-label="이미지 도우미 화면 크게 보기"><img src="images/helper-panel.jpg" width="981" height="153" alt="확장프로그램 도우미. 오른쪽에 Postimages 이미지 업로드 버튼, 아래에 직접 링크로 넣기 메뉴가 있다." loading="lazy"></a><figcaption><span>확장 코드의 도우미 화면 · 로컬 편집기에서 캡처</span><span>이미지를 누르면 확대</span></figcaption></figure>
+          <h3><span class="number" aria-hidden="true">02</span> 이미지 업로드 누르기</h3>
+          <p>본문 위에서 <strong>이미지 업로드</strong>를 누르세요.</p>
+          <figure><a class="image-link" href="images/helper-panel.jpg" target="_blank" rel="noopener" aria-label="이미지 업로드 화면 크게 보기"><img src="images/helper-panel.jpg" width="980" height="61" alt="이미지 업로드 버튼과 직접 링크로 넣기 메뉴." loading="lazy"></a><figcaption><span>확장 화면 · 로컬 편집기에서 캡처</span><span>이미지를 누르면 확대</span></figcaption></figure>
         </article>
         <article class="step">
           <h3><span class="number" aria-hidden="true">03</span> 이미지 선택 후 디시에서 등록</h3>
@@ -51,13 +51,11 @@
         <h2 id="troubleshooting-title">문제 해결</h2>
         <dl>
           <div><dt>업로드 창이 열리지 않음</dt><dd>디시 글쓰기 페이지에서 팝업을 허용한 뒤 다시 누르세요.</dd></div>
-          <div><dt>이미지가 본문에 들어오지 않음</dt><dd>도우미의 <strong>직접 링크로 넣기</strong>를 열어 Postimages의 ‘직접 링크’나 ‘포럼용 핫링크’를 붙여 넣으세요.</dd></div>
+          <div><dt>이미지가 본문에 들어오지 않음</dt><dd><strong>직접 링크로 넣기(자동 삽입이 안 될 때)</strong>를 열어 Postimages의 ‘직접 링크’나 ‘포럼용 핫링크’를 붙여 넣으세요.</dd></div>
           <div><dt>확장프로그램 업데이트</dt><dd>새 ZIP으로 기존 폴더의 파일을 교체하고, 확장프로그램 관리 화면과 디시 페이지를 새로고침하세요.</dd></div>
         </dl>
-        <details><summary>지원 범위와 검증 상태</summary><div class="details-body"><p>PC Chrome·Edge의 글쓰기 화면용입니다. 모바일·글 수정 화면은 지원하지 않습니다.</p><p>로직 테스트 8개, 실제 Summernote 기반 로컬 테스트 12개를 통과했습니다. 실제 확장 설치·파일 업로드·디시 게시 후 이미지 표시까지의 검증은 남아 있습니다.</p><p>이미지는 Postimages에 저장되며 링크를 아는 사람이 볼 수 있습니다. 확장은 디시 쿠키·비밀번호를 수집하지 않습니다. 최종 글 등록은 사용자가 진행합니다.</p></div></details>
       </section>
     </main>
-    <footer><p>디시인사이드·Postimages와 제휴하지 않은 비공식 도구입니다.</p><p>화면 캡처: 2026.10.22</p></footer>
   </div>
 </body>
 </html>

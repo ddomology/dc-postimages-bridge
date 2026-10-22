@@ -1,4 +1,8 @@
-# 확인한 요청 흐름 — 2026-10-22
+# 요청 흐름
+
+v1.0.1 · 분석일 2026-10-22
+
+화면의 **이미지 업로드** 버튼은 Postimages 팝업을 열고, **직접 링크로 넣기(자동 삽입이 안 될 때)**는 링크를 편집기에 삽입합니다. v1.0.1은 UI와 문구를 수정했으며 업로드 요청 방식은 같습니다.
 
 ## Postimages
 
@@ -14,7 +18,7 @@
 
 분석한 페이지: https://gall.dcinside.com/mgallery/board/write/?id=thesingularity
 
-편집기는 `#write textarea#memo`를 Summernote로 초기화합니다. 도우미는 동일한 편집기 API의 `saveRange`, `restoreRange`, `pasteHTML`을 사용하므로 원래 글쓰기 폼에 본문을 유지합니다. 로그인 관련 DOM이나 쿠키에는 접근하지 않습니다.
+편집기는 `#write textarea#memo`를 Summernote로 초기화합니다. 확장은 동일한 편집기 API의 `editor.setLastRange`, `restoreRange`, `pasteHTML`을 사용하므로 원래 글쓰기 폼에 본문을 유지합니다. 로그인 관련 DOM이나 쿠키에는 접근하지 않습니다.
 
 페이지의 기존 등록 스크립트는 `/block/block/` 요청 후 `/board/forms/article_submit`에 본문과 폼 값을 보냅니다. CSRF, 동적 폼 값, 자동입력 방지 및 적용된 Turnstile 절차가 연계됩니다. 확장은 이 요청을 복제·가로채거나 토큰을 수정하지 않습니다.
 

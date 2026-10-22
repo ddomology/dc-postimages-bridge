@@ -94,29 +94,35 @@
     const root = host.attachShadow({ mode: 'open' });
     root.innerHTML = `
       <style>
-        :host{color-scheme:light;font:13px/1.6 "Malgun Gothic",system-ui,sans-serif;color:#203047}
-        *{box-sizing:border-box} .panel{border:1px solid #cbd9ed;border-radius:8px;background:#f5f8ff;padding:14px 16px}
-        .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.brand{font-size:14px;color:#253e70;font-weight:700;margin-right:auto}
-        .tag{font-size:11px;color:#61718a;font-weight:400;margin-left:7px}button{font:inherit;border:1px solid #bac8dd;background:#fff;color:#243854;border-radius:5px;padding:7px 12px;cursor:pointer}
-        button:hover{background:#eaf0fb}button:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #9abfff;outline-offset:2px}
-        button.primary{background:#315fb5;color:#fff;border-color:#315fb5;font-weight:700}button.primary:hover{background:#244d98}
-        button:disabled{opacity:.6;cursor:wait}.hint{margin:8px 0 0;font-size:12px;color:#60718b}
-        #status{margin-top:7px;overflow-wrap:anywhere}#status[data-kind=error]{color:#a52d26}#status[data-kind=success]{color:#19653e}
-        details{margin-top:8px}summary{cursor:pointer;color:#3f5780;width:fit-content}textarea{display:block;width:100%;min-height:85px;resize:vertical;border:1px solid #c4d0e2;border-radius:5px;padding:9px;margin:8px 0;font:12px/1.6 monospace;color:#172c48;background:#fff}
-        label{display:block;margin-top:8px}.small{font-size:12px;color:#60718b}a{color:#315fb5} [hidden]{display:none!important}
+        :host{color-scheme:light;font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;color:#202020}
+        *{box-sizing:border-box}.panel{border:1px solid #e2e2e2;border-radius:6px;background:#fff;padding:12px}
+        .toolbar{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+        button{font:inherit;font-weight:500;min-height:34px;border:1px solid #d5d5d5;background:#fff;color:#202020;border-radius:5px;padding:6px 13px;cursor:pointer;white-space:nowrap}
+        button:hover{background:#f5f5f5;border-color:#bbb}button:active{background:#ededed}
+        button:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid #202020;outline-offset:3px}
+        button.primary{background:#202020;color:#fff;border-color:#202020}button.primary:hover{background:#383838;border-color:#383838}button.primary:active{background:#111}
+        button:disabled{opacity:.5;cursor:wait}details{flex:1;min-width:240px}
+        summary{display:flex;align-items:center;gap:8px;min-height:34px;width:fit-content;list-style:none;cursor:pointer;color:#666;font-size:12px}
+        summary::-webkit-details-marker{display:none}summary::before{content:"";width:5px;height:5px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;transform:rotate(-45deg);flex:none}
+        details[open]>summary::before{transform:rotate(45deg)}summary:hover{color:#202020}
+        .manual-fields{padding-top:10px}textarea{display:block;width:100%;min-height:90px;resize:vertical;border:1px solid #d5d5d5;border-radius:5px;padding:10px;margin:0 0 10px;font:12px/1.6 ui-monospace,Consolas,monospace;color:#202020;background:#fafafa}
+        textarea::placeholder{color:#8b8b8b}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+        #status{margin:10px 0 0;font-size:12px;color:#555;overflow-wrap:anywhere}#status[data-kind=error]{color:#a52d26}#retry{margin-top:10px}
+        [hidden]{display:none!important}
       </style>
-      <section class="panel" aria-label="Postimages 이미지 도우미">
-        <div class="row"><span class="brand">Postimages 이미지 도우미<span class="tag">비공식 확장</span></span>
-          <button class="primary" id="upload" type="button">Postimages 이미지 업로드</button>
-          <button id="retry" type="button" hidden>삽입 다시 시도</button></div>
-        <p class="hint">선택한 이미지를 Postimages에 올린 뒤 본문에 넣습니다. 글 등록은 디시의 등록 버튼으로 진행하세요.</p>
-        <div id="status" role="status" aria-live="polite">본문에서 넣을 위치를 선택한 다음 업로드하세요.</div>
-        <details id="manual"><summary>직접 링크로 넣기 · 자동 삽입이 안 될 때</summary>
-          <label for="links">Postimages 직접 링크 / 포럼 코드</label>
-          <textarea id="links" placeholder="https://i.postimg.cc/…/image.png" spellcheck="false"></textarea>
-          <button id="insert" type="button">링크를 본문에 삽입</button>
-          <p class="small">업로드 결과의 ‘직접 링크’ 또는 ‘포럼용 핫링크’를 복사하세요. 여러 장도 가능합니다. 이미지는 링크를 아는 사람이 볼 수 있습니다.</p>
-        </details>
+      <section class="panel" aria-label="이미지 업로드">
+        <div class="toolbar">
+          <button class="primary" id="upload" type="button">이미지 업로드</button>
+          <details id="manual"><summary>직접 링크로 넣기(자동 삽입이 안 될 때)</summary>
+            <div class="manual-fields">
+              <label class="sr-only" for="links">Postimages 직접 링크 또는 포럼 코드</label>
+              <textarea id="links" placeholder="https://i.postimg.cc/…/image.png" spellcheck="false"></textarea>
+              <button id="insert" type="button">본문에 넣기</button>
+            </div>
+          </details>
+        </div>
+        <div id="status" role="status" aria-live="polite" hidden></div>
+        <button id="retry" type="button" hidden>삽입 다시 시도</button>
       </section>`;
     editor.before(host);
     const $memo = jq(memo);
@@ -131,6 +137,7 @@
     function report(message, kind = 'info') {
       status.textContent = message;
       status.dataset.kind = kind;
+      status.hidden = false;
     }
     function isCodeView() { return !!$memo.summernote('codeview.isActivated'); }
     function saveCursor() {
@@ -145,7 +152,7 @@
     function stopWatching() {
       clearInterval(closeTimer);
       closeTimer = null;
-      uploadButton.textContent = 'Postimages 이미지 업로드';
+      uploadButton.textContent = '이미지 업로드';
     }
     function insert(urls) {
       queued = urls;
@@ -183,7 +190,7 @@
         $memo.summernote('pasteHTML', imageMarkup(urls));
         queued = null;
         retryButton.hidden = true;
-        report(urls.length + '장의 이미지를 본문에 넣었습니다. 내용을 확인한 뒤 디시에서 등록하세요.', 'success');
+        report('이미지 ' + urls.length + '장을 넣었습니다.', 'success');
       } catch {
         // Do not offer a blind retry if the editor changed before an exception.
         if (editable.querySelectorAll('img').length !== beforeCount) {
@@ -205,7 +212,7 @@
     uploadButton.addEventListener('click', () => {
       if (active && !active.received && !active.popup.closed) {
         active.popup.focus();
-        report('열려 있는 Postimages 창에서 이미지를 선택해 주세요.');
+        report('열린 업로드 창에서 이미지를 선택하세요.');
         return;
       }
       if (isCodeView()) {
@@ -222,7 +229,7 @@
       stopWatching();
       active = { id, popup, received: false };
       uploadButton.textContent = '업로드 창으로 이동';
-      report('Postimages 창에서 이미지를 선택하세요. 업로드가 끝나면 본문에 자동으로 들어갑니다.');
+      report('업로드 창에서 이미지를 선택하세요.');
       closeTimer = setInterval(() => {
         if (active && active.popup.closed) {
           const received = active.received;

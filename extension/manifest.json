@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "디시 이미지 브릿지",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minimum_chrome_version": "111",
-  "description": "디시 PC 글쓰기에서 Postimages에 이미지를 올리고 본문에 삽입합니다. 최종 등록은 디시에서 직접 합니다.",
+  "description": "디시 글쓰기에서 Postimages 이미지를 업로드하고 본문에 넣습니다.",
   "action": {
-    "default_title": "디시 Postimages 사용 방법",
+    "default_title": "이미지 업로드",
     "default_popup": "help.html"
   },
   "content_scripts": [{
