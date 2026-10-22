@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { imageUrl, extractImages, imageMarkup, uploadUrl, validReply } = require('../extension/content.js');
+const { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect } = require('../extension/content.js');
 const img = 'https://i.postimg.cc/AbCd1234/photo.png';
 
 test('Postimages hotlink BBCode and multiple images retain order, excluding page links', () => {
@@ -59,4 +59,43 @@ test('Replies must match origin, exact popup, session id and cannot replay', () 
   assert.equal(validReply({ ...good, data: { id: 'stale', message: img } }, session), false);
   assert.equal(validReply(good, { ...session, received: true }), false);
   assert.equal(validReply(good, null), false);
+});
+
+const callbackId = 'dcpi_' + 'a'.repeat(32);
+function callbackHash(text, id = callbackId) {
+  return '#' + new URLSearchParams({ postimage_id: id, postimage_text: text });
+}
+
+test('Redirect callback extracts image URLs from the official fragment fields', () => {
+  const data = redirectResult(callbackHash('[url=https://postimg.cc/abc][img]' + img + '[/img][/url]'));
+  assert.deepEqual(data, { type: 'dcpi:redirect', id: callbackId, message: img });
+  assert.equal(validRedirect(data, callbackId), true);
+  assert.equal(validRedirect(data, 'different-session'), false);
+  assert.equal(validRedirect({ ...data, type: 'unknown' }, callbackId), false);
+});
+
+test('Callback decodes exactly once and preserves plus signs and filename escapes', () => {
+  const url = 'https://i.postimg.cc/abc/image%20name+plus.png';
+  assert.equal(redirectResult(callbackHash('[img]' + url + '[/img]')).message, url);
+});
+
+test('Callback rejects unrelated, duplicate, invalid, or oversized fragment data', () => {
+  for (const hash of ['', '#section', callbackHash(img, 'pi_other_plugin'),
+    callbackHash('javascript:alert(1)'), callbackHash(img) + '&postimage_id=' + callbackId,
+    callbackHash(img) + '&postimage_text=' + encodeURIComponent(img),
+    callbackHash('x'.repeat(200001)), '#'+ 'x'.repeat(601000)]) {
+    assert.equal(redirectResult(hash), null);
+  }
+});
+
+test('Redirect messages need the original same-origin popup and explicit callback type', () => {
+  const popup = {};
+  const session = { id: callbackId, popup, origin: 'https://gall.dcinside.com', received: false };
+  const data = redirectResult(callbackHash(img));
+  const good = { origin: session.origin, source: popup, data };
+  assert.equal(validReply(good, session), true);
+  assert.equal(validReply({ ...good, source: {} }, session), false);
+  assert.equal(validReply({ ...good, origin: 'https://evil.test' }, session), false);
+  assert.equal(validReply({ ...good, data: { id: callbackId, message: img } }, session), false);
+  assert.equal(validReply(good, { ...session, received: true }), false);
 });

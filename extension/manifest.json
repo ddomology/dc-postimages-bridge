@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "디시 이미지 브릿지",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minimum_chrome_version": "111",
   "description": "디시 글쓰기에서 Postimages 이미지를 업로드하고 본문에 넣습니다.",
   "action": {

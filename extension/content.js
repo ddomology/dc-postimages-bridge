@@ -5,6 +5,8 @@
   const MAX_TEXT = 200000;
   const MAX_IMAGES = 100;
   const UPLOAD_ORIGIN = 'https://postimages.org';
+  const REDIRECT_TYPE = 'dcpi:redirect';
+  const ACK_TYPE = 'dcpi:received';
 
   function imageUrl(value) {
     try {
@@ -61,17 +63,37 @@
     return UPLOAD_ORIGIN + '/upload?' + query;
   }
 
+  function redirectResult(hash) {
+    if (typeof hash !== 'string' || hash.length > MAX_TEXT * 3 + 512) return null;
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    const id = params.get('postimage_id');
+    if (!/^dcpi_[a-f0-9]{32}$/.test(id || '') ||
+        params.getAll('postimage_id').length !== 1 || params.getAll('postimage_text').length !== 1) return null;
+    // URLSearchParams decodes the callback once, including encoded '+' signs.
+    // Relay only normalized image URLs, never the returned HTML/BBCode.
+    try { return { type: REDIRECT_TYPE, id, message: extractImages(params.get('postimage_text')).join('\n') }; }
+    catch { return null; }
+  }
+
+  function validRedirect(data, id) {
+    return !!(data && data.type === REDIRECT_TYPE && data.id === id &&
+      typeof data.message === 'string' && data.message.length <= MAX_TEXT);
+  }
+
   function validReply(event, session) {
-    return !!(session && !session.received && event.origin === UPLOAD_ORIGIN &&
-      event.source === session.popup && event.data &&
-      event.data.id === session.id && typeof event.data.message === 'string');
+    return !!(session && !session.received && event.source === session.popup && event.data &&
+      event.data.id === session.id && typeof event.data.message === 'string' &&
+      (event.origin === UPLOAD_ORIGIN ||
+        (event.origin === session.origin && validRedirect(event.data, session.id))));
   }
 
   if (typeof module === 'object' && module.exports) {
-    module.exports = { imageUrl, extractImages, imageMarkup, uploadUrl, validReply };
+    module.exports = { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect };
     return;
   }
   if (!/^\/(?:mgallery\/|mini\/|person\/)?board\/write\/?$/.test(location.pathname)) return;
+  const returned = redirectResult(location.hash);
+  if (returned) { relayRedirect(returned); return; }
   if (document.getElementById('dc-postimages-helper')) return;
 
   let attempts = 0;
@@ -85,6 +107,62 @@
       mount(memo, editor, jq);
     } else if (attempts >= 120) clearInterval(initTimer);
   }, 250);
+
+  function relayRedirect(data) {
+    // Postimages may return through /mod -> forum URL instead of postMessage.
+    // BroadcastChannel also works if cross-origin navigation severed opener.
+    let channel = null;
+    try { channel = new BroadcastChannel('dcpi:' + data.id); } catch {}
+    const parent = window.opener;
+    let done = false;
+    let timer;
+    let deadline;
+    let fallback;
+    function cleanup() {
+      clearInterval(timer);
+      clearTimeout(deadline);
+      channel?.close();
+      window.removeEventListener('message', onMessage);
+    }
+    function acknowledge(message) {
+      if (done || !message || message.type !== ACK_TYPE || message.id !== data.id) return;
+      done = true;
+      cleanup();
+      fallback?.remove();
+      try { parent?.focus(); } catch {}
+      window.close();
+    }
+    function onMessage(event) {
+      if (event.origin === location.origin && event.source === parent) acknowledge(event.data);
+    }
+    window.addEventListener('message', onMessage);
+    if (channel) channel.onmessage = event => acknowledge(event.data);
+    function send() {
+      try { parent?.postMessage(data, location.origin); } catch {}
+      channel?.postMessage(data);
+    }
+    function showRecovery() {
+      if (done) return;
+      if (!document.body) { document.addEventListener('DOMContentLoaded', showRecovery, { once: true }); return; }
+      fallback = document.createElement('div');
+      fallback.setAttribute('role', 'status');
+      fallback.style.cssText = 'position:fixed;z-index:2147483647;left:20px;right:20px;top:20px;max-width:640px;margin:auto;padding:20px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#202020;font:14px/1.7 sans-serif;box-shadow:0 4px 20px #0002';
+      const text = document.createElement('p');
+      text.textContent = '원래 글쓰기 창에 연결하지 못했습니다. 아래 링크를 복사해 원래 창의 ‘직접 링크로 넣기’에 붙여 넣으세요.';
+      const input = document.createElement('textarea');
+      input.readOnly = true;
+      input.value = data.message;
+      input.setAttribute('aria-label', '업로드한 이미지 링크');
+      input.style.cssText = 'box-sizing:border-box;width:100%;min-height:90px;padding:8px;font:13px/1.6 monospace';
+      input.addEventListener('focus', () => input.select());
+      fallback.append(text, input);
+      document.body.prepend(fallback);
+    }
+    timer = setInterval(send, 250);
+    deadline = setTimeout(() => { cleanup(); showRecovery(); }, 5000);
+    window.addEventListener('pagehide', cleanup, { once: true });
+    send();
+  }
 
   function mount(memo, editor, jq) {
     if (document.getElementById('dc-postimages-helper')) return;
@@ -133,6 +211,13 @@
     let active = null;
     let queued = null;
     let closeTimer = null;
+    let sessionDeadline = null;
+
+    function closeChannel() {
+      active?.channel?.close();
+      if (active) active.channel = null;
+      clearTimeout(sessionDeadline);
+    }
 
     function report(message, kind = 'info') {
       status.textContent = message;
@@ -227,7 +312,19 @@
         return;
       }
       stopWatching();
-      active = { id, popup, received: false };
+      closeChannel();
+      let channel = null;
+      try { channel = new BroadcastChannel('dcpi:' + id); } catch {}
+      active = { id, popup, origin: location.origin, received: false, channel };
+      if (channel) channel.onmessage = event => {
+        if (!active || active.received || !validRedirect(event.data, active.id)) return;
+        if (receive(event.data.message, false)) {
+          channel.postMessage({ type: ACK_TYPE, id });
+          closeChannel();
+        }
+      };
+      // One bounded timeout; no background polling after a result is received.
+      sessionDeadline = setTimeout(closeChannel, 30 * 60 * 1000);
       uploadButton.textContent = '업로드 창으로 이동';
       report('업로드 창에서 이미지를 선택하세요.');
       closeTimer = setInterval(() => {
@@ -238,14 +335,27 @@
         }
       }, 1000);
     });
-    window.addEventListener('message', event => {
-      if (!validReply(event, active)) return;
-      active.received = true;
-      stopWatching();
-      try { insert(extractImages(event.data.message, true)); }
+    function receive(message, encoded) {
+      try {
+        const urls = extractImages(message, encoded);
+        active.received = true;
+        stopWatching();
+        insert(urls);
+        return true;
+      }
       catch (error) {
         root.getElementById('manual').open = true;
         report(error.message, 'error');
+        return false;
+      }
+    }
+    window.addEventListener('message', event => {
+      if (!validReply(event, active)) return;
+      if (receive(event.data.message, event.origin === UPLOAD_ORIGIN)) {
+        if (event.data.type === REDIRECT_TYPE) {
+          event.source.postMessage({ type: ACK_TYPE, id: active.id }, active.origin);
+        }
+        closeChannel();
       }
     });
     retryButton.addEventListener('click', () => { if (queued) insert(queued); });
@@ -253,6 +363,6 @@
       try { insert(extractImages(links.value)); }
       catch (error) { report(error.message, 'error'); }
     });
-    window.addEventListener('pagehide', stopWatching, { once: true });
+    window.addEventListener('pagehide', () => { stopWatching(); closeChannel(); }, { once: true });
   }
 })();

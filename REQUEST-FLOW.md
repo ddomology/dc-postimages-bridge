@@ -1,8 +1,8 @@
 # 요청 흐름
 
-v1.0.1 · 분석일 2026-10-22
+v1.0.2 · 분석일 2026-10-22
 
-화면의 **이미지 업로드** 버튼은 Postimages 팝업을 열고, **직접 링크로 넣기(자동 삽입이 안 될 때)**는 링크를 편집기에 삽입합니다. v1.0.1은 UI와 문구를 수정했으며 업로드 요청 방식은 같습니다.
+화면의 **이미지 업로드** 버튼은 Postimages 팝업을 열고, **직접 링크로 넣기(자동 삽입이 안 될 때)**는 링크를 편집기에 삽입합니다. v1.0.2는 결과가 글쓰기 URL로 돌아오는 리다이렉트 경로를 추가 처리합니다.
 
 ## Postimages
 
@@ -10,7 +10,16 @@ v1.0.1 · 분석일 2026-10-22
 
 팝업의 폼은 `POST https://postimages.org/json`으로 multipart 업로드합니다. 페이지 및 업로드 자바스크립트에서 확인한 주요 필드는 `file`, `gallery`, `optsize`, `expire`, `numfiles`, `upload_session`입니다. 팝업은 게시판 연동용 매개변수도 함께 처리합니다.
 
-업로드 완료 시 Postimages는 연동 결과를 만들고 opener에 `{id: window.name, message: encodedResult}`를 postMessage로 전달합니다. 확장은 `origin === https://postimages.org`, 열린 팝업의 WindowProxy, 무작위 세션 ID를 모두 확인합니다. 응답의 HTML 자체는 실행하거나 삽입하지 않고 `https://i.postimg.cc/` 이미지 URL만 추출해 새 이미지 태그를 만듭니다.
+업로드 결과는 두 경로로 반환됩니다.
+
+1. Postimages에서 opener로 `{id: window.name, message: encodedResult}`를 postMessage로 전달합니다. 확장은 출처 `https://postimages.org`, 정확한 팝업 WindowProxy와 세션 ID를 확인합니다.
+2. 직접 메시지를 사용할 수 없거나 결과 요청이 실패하면 `/mod`를 거쳐 원래 글쓰기 URL로 돌아옵니다. URL fragment의 `postimage_id`와 `postimage_text`에 결과가 담깁니다. v1.0.1까지는 이 경로를 처리하지 못했습니다.
+
+리다이렉트된 창은 결과를 한 번 디코딩하고 이미지 URL만 추려 원래 창에 전달합니다. same-origin postMessage는 팝업·출처·세션 ID를 확인합니다. opener 연결이 끊긴 경우에는 같은 origin의 세션별 BroadcastChannel을 사용합니다. 채널 이름은 업로드를 시작할 때 생성한 128비트 무작위 ID로 분리합니다. 쿠키·localStorage·확장 저장소를 사용하지 않습니다.
+
+원래 창은 결과를 한 번만 처리하고 확인 응답을 보냅니다. 콜백 창은 확인 응답을 받으면 닫힙니다. 5초 안에 연결되지 않으면 업로드 링크를 읽기 전용 입력란에 남겨 수동으로 복구할 수 있게 합니다. 이미지가 삽입되거나 본문에 넣을 링크가 보관된 뒤에만 확인 응답을 보냅니다.
+
+두 경로 모두 응답 HTML을 실행하거나 그대로 삽입하지 않습니다. `https://i.postimg.cc/` URL만 검증해 새 이미지 태그를 만듭니다.
 
 확장은 Postimages의 비공개 업로드 API를 재구현하거나 API 키를 보관하지 않습니다. 공식 팝업이 업로드와 서비스 측 인증을 담당합니다.
 

@@ -2,7 +2,9 @@
 
 디시 PC 글쓰기에서 이미지를 Postimages에 업로드하고 본문에 넣는 Chrome·Edge 확장프로그램입니다.
 
-[다운로드 및 설치](https://ddomology.github.io/dc-postimages-bridge/) · v1.0.1
+[다운로드 및 설치](https://ddomology.github.io/dc-postimages-bridge/) · v1.0.2
+
+v1.0.2에서 업로드 후 새 글쓰기 창으로 돌아왔을 때 이미지가 전달되지 않는 오류를 수정했습니다. 기존 사용자는 ZIP을 교체한 뒤 확장 관리 화면과 디시 글쓰기 페이지를 새로고침하세요.
 
 ## 설치
 
