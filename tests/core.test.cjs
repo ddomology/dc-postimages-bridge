@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect } = require('../extension/content.js');
+const { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect, editorMode } = require('../extension/content.js');
 const img = 'https://i.postimg.cc/AbCd1234/photo.png';
 
 test('Postimages hotlink BBCode and multiple images retain order, excluding page links', () => {
@@ -48,6 +48,36 @@ test('Popup URL follows official plugin contract, omitting unrelated page data',
   assert.equal(url.searchParams.get('code'), 'hotlink');
   assert.equal(decodeURIComponent(url.searchParams.get('forumurl')), 'https://gall.dcinside.com/mgallery/board/write/?id=thesingularity');
   assert.ok(!url.href.includes('secret'));
+});
+
+test('Only supported write and modify routes run, and each is in the manifest', () => {
+  const manifest = require('../extension/manifest.json');
+  const matches = manifest.content_scripts[0].matches;
+  for (const prefix of ['', 'mgallery/', 'mini/', 'person/']) {
+    for (const mode of ['write', 'modify']) {
+      const path = '/' + prefix + 'board/' + mode;
+      assert.equal(editorMode(path), mode);
+      assert.equal(editorMode(path + '/'), mode);
+      assert.ok(matches.includes('https://gall.dcinside.com' + path + '*'));
+    }
+  }
+  for (const path of ['/mgallery/board/view/', '/board/lists/', '/board/modify_password_submit',
+    '/board/writeSomething', '/board/modify/extra', '/other/board/modify/', '/']) {
+    assert.equal(editorMode(path), null, path);
+  }
+});
+
+test('Modify uploads use a public write callback without post/authentication data', () => {
+  for (const prefix of ['', 'mgallery/', 'mini/', 'person/']) {
+    for (const slash of ['', '/']) {
+      const page = 'https://gall.dcinside.com/' + prefix + 'board/modify' + slash +
+        '?id=thesingularity&no=12345&key=private-key&password=private-password#private-fragment';
+      const upload = new URL(uploadUrl('dcpi_unit', page));
+      const callback = decodeURIComponent(upload.searchParams.get('forumurl'));
+      assert.equal(callback, 'https://gall.dcinside.com/' + prefix + 'board/write/?id=thesingularity');
+      assert.ok(!upload.href.includes('12345') && !upload.href.includes('private'));
+    }
+  }
 });
 test('Replies must match origin, exact popup, session id and cannot replay', () => {
   const popup = {};

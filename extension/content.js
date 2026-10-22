@@ -8,6 +8,10 @@
   const REDIRECT_TYPE = 'dcpi:redirect';
   const ACK_TYPE = 'dcpi:received';
 
+  function editorMode(pathname) {
+    return /^\/(?:mgallery\/|mini\/|person\/)?board\/(write|modify)\/?$/.exec(pathname)?.[1] || null;
+  }
+
   function imageUrl(value) {
     try {
       const url = new URL(value);
@@ -52,8 +56,11 @@
 
   function uploadUrl(areaId, pageUrl) {
     const page = new URL(pageUrl);
-    // Pass only the gallery address; exclude any unrelated query parameters.
-    const forum = new URL(page.origin + page.pathname);
+    // Always return through the public write page. A modify URL requires the
+    // post number and may require a password POST again in a fresh popup.
+    // The session delivers the result to the original write OR modify window.
+    // Never send the article number, password or authorization key to Postimages.
+    const forum = new URL(page.origin + page.pathname.replace(/\/modify\/?$/, '/write/'));
     if (page.searchParams.has('id')) forum.searchParams.set('id', page.searchParams.get('id'));
     const query = new URLSearchParams({
       mode: 'phpbb3', areaid: areaId, hash: '1', pm: '1', lang: 'ko', code: 'hotlink',
@@ -88,10 +95,11 @@
   }
 
   if (typeof module === 'object' && module.exports) {
-    module.exports = { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect };
+    module.exports = { imageUrl, extractImages, imageMarkup, uploadUrl, validReply, redirectResult, validRedirect, editorMode };
     return;
   }
-  if (!/^\/(?:mgallery\/|mini\/|person\/)?board\/write\/?$/.test(location.pathname)) return;
+  const mode = editorMode(location.pathname);
+  if (!mode) return;
   const returned = redirectResult(location.hash);
   if (returned) { relayRedirect(returned); return; }
   if (document.getElementById('dc-postimages-helper')) return;
@@ -99,10 +107,13 @@
   let attempts = 0;
   const initTimer = setInterval(() => {
     attempts++;
-    const memo = document.querySelector('#write textarea#memo');
-    const editor = memo && memo.parentElement.querySelector('.note-editor');
+    const memo = document.querySelector('textarea#memo');
     const jq = window.jQuery;
-    if (memo && editor && jq && jq.fn.summernote && jq(memo).data('summernote')) {
+    // Resolve the initialized editor rather than requiring the write form ID.
+    // Password/login screens have no Summernote instance and stay untouched.
+    const context = memo && jq && jq.fn.summernote && jq(memo).data('summernote');
+    const editor = context?.layoutInfo?.editor?.[0];
+    if (editor && editor.querySelector('.note-editable')) {
       clearInterval(initTimer);
       mount(memo, editor, jq);
     } else if (attempts >= 120) clearInterval(initTimer);
@@ -148,7 +159,7 @@
       fallback.setAttribute('role', 'status');
       fallback.style.cssText = 'position:fixed;z-index:2147483647;left:20px;right:20px;top:20px;max-width:640px;margin:auto;padding:20px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#202020;font:14px/1.7 sans-serif;box-shadow:0 4px 20px #0002';
       const text = document.createElement('p');
-      text.textContent = '원래 글쓰기 창에 연결하지 못했습니다. 아래 링크를 복사해 원래 창의 ‘직접 링크로 넣기’에 붙여 넣으세요.';
+      text.textContent = '원래 편집 창에 연결하지 못했습니다. 아래 링크를 복사해 원래 창의 ‘직접 링크로 넣기’에 붙여 넣으세요.';
       const input = document.createElement('textarea');
       input.readOnly = true;
       input.value = data.message;
@@ -228,6 +239,8 @@
     }
     function isCodeView() { return !!$memo.summernote('codeview.isActivated'); }
     function cleanGuides() {
+      // Existing published content must not be cleaned on the modify screen.
+      if (mode !== 'write') return;
       // Code view owns a separate buffer. Never overwrite it from the DOM.
       if (isCodeView()) return;
       const guides = editable.querySelectorAll(guideSelector);
@@ -243,12 +256,12 @@
       editable.dispatchEvent(new Event('input', { bubbles: true }));
     }
     cleanGuides();
-    const guideObserver = new MutationObserver(records => {
+    const guideObserver = mode === 'write' ? new MutationObserver(records => {
       if (records.some(record => Array.from(record.addedNodes).some(node =>
         node.nodeType === 1 && (node.matches(guideSelector) || node.querySelector(guideSelector))))) cleanGuides();
-    });
-    guideObserver.observe(editable, { childList: true, subtree: true });
-    $memo.on('summernote.codeview.toggled.dcpi', cleanGuides);
+    }) : null;
+    guideObserver?.observe(editable, { childList: true, subtree: true });
+    if (mode === 'write') $memo.on('summernote.codeview.toggled.dcpi', cleanGuides);
 
     function usableRange(range) {
       return range && [range.startContainer, range.endContainer].every(node =>
@@ -293,7 +306,7 @@
       // Keep a recoverable copy without changing the user's editor on errors.
       links.value = urls.join('\n');
       if (!memo.isConnected || !editor.isConnected) {
-        report('편집기가 바뀌었습니다. 직접 링크를 복사해 보관한 뒤 글쓰기 화면을 다시 열어 주세요.', 'error');
+        report('편집기가 바뀌었습니다. 직접 링크를 복사해 보관한 뒤 편집 화면을 다시 열어 주세요.', 'error');
         return;
       }
       if (isCodeView()) {
@@ -423,7 +436,7 @@
     window.addEventListener('pagehide', () => {
       stopWatching();
       closeChannel();
-      guideObserver.disconnect();
+      guideObserver?.disconnect();
       $memo.off('.dcpi');
     }, { once: true });
   }

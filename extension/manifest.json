@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "디시 이미지 브릿지",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "minimum_chrome_version": "111",
-  "description": "디시 글쓰기에서 Postimages 이미지를 업로드하고 본문에 넣습니다.",
+  "description": "디시 글쓰기·수정 화면에서 Postimages 이미지를 업로드하고 본문에 넣습니다.",
   "action": {
     "default_title": "이미지 업로드",
     "default_popup": "help.html"
@@ -11,9 +11,13 @@
   "content_scripts": [{
     "matches": [
       "https://gall.dcinside.com/board/write*",
+      "https://gall.dcinside.com/board/modify*",
       "https://gall.dcinside.com/mgallery/board/write*",
+      "https://gall.dcinside.com/mgallery/board/modify*",
       "https://gall.dcinside.com/mini/board/write*",
-      "https://gall.dcinside.com/person/board/write*"
+      "https://gall.dcinside.com/mini/board/modify*",
+      "https://gall.dcinside.com/person/board/write*",
+      "https://gall.dcinside.com/person/board/modify*"
     ],
     "js": ["content.js"],
     "run_at": "document_idle",
