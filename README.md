@@ -23,7 +23,9 @@ v1.0.4부터 글 수정 화면에서도 이미지 업로드와 직접 링크 삽
 3. **이미지 업로드**를 누르고 새 창에서 파일을 선택합니다.
 4. 본문을 확인한 뒤 디시에서 등록 또는 수정을 완료합니다.
 
-![이미지 업로드 화면](docs/images/helper-panel.jpg)
+![이미지 선택부터 본문 삽입까지](docs/images/upload-demo.gif)
+
+실제 Postimages 업로드와 로컬 편집기 자동 삽입을 캡처했습니다. 파일 선택 장면은 Windows 탐색기에서 별도로 촬영했습니다. [GIF 저장](https://ddomology.github.io/dc-postimages-bridge/images/upload-demo.gif)
 
 자동 삽입이 안 되면 **직접 링크로 넣기(자동 삽입이 안 될 때)**를 열어 Postimages의 직접 링크 또는 포럼용 핫링크를 붙여 넣고 **본문에 넣기**를 누릅니다. 직접 링크는 `https://i.postimg.cc/`로 시작합니다.
 
